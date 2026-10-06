@@ -439,14 +439,19 @@ function handle(data) {
 
 // ---- Links, copy & share ----
 let inviteLink = '';
-// Turns http(s):// and www. addresses in a note into clickable links (text stays text, no HTML).
+// Turns web links (http(s)://, www.) and app deep links (paytmmoney://, upi://, whatsapp://,
+// intent://, mailto:, tel:, sms:, ...) in a note into clickable links. Text stays text, no HTML.
+// Script-running or local schemes are never linked.
+const BLOCKED = /^(javascript|data|vbscript|file|blob|about|chrome|filesystem):/i;
+const LINK_RE = /((?:[a-z][a-z0-9+.-]{1,30}:\/\/|(?:mailto|tel|sms|geo|upi):|www\.)[^\s<>"]*[^\s<>".,;:!?)\]'])/i;
 function linkify(text) {
   const frag = document.createDocumentFragment();
-  for (const part of text.split(/((?:https?:\/\/|www\.)[^\s<>"]+[^\s<>".,;:!?)\]'])/i)) {
-    if (/^(https?:\/\/|www\.)/i.test(part)) {
+  for (const part of text.split(LINK_RE)) {
+    if (LINK_RE.test(part) && !BLOCKED.test(part)) {
       const a = document.createElement('a');
       a.className = 'link'; a.href = /^www\./i.test(part) ? 'https://' + part : part;
-      a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = part;
+      if (/^https?:/i.test(a.href)) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }  // apps open in place
+      a.textContent = part;
       frag.append(a);
     } else if (part) frag.append(part);
   }
