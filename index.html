@@ -121,6 +121,9 @@
   .composer-hint { font-size: 11px; color: var(--muted); text-align: center; padding: 0 0 8px; }
   .drop { position: fixed; inset: 12px; border-radius: 24px; background: rgba(99,102,241,.12); backdrop-filter: blur(4px); border: 3px dashed var(--accent);
     display: grid; place-items: center; font-size: 22px; font-weight: 700; color: var(--accent); pointer-events: none; }
+  .help { margin-top: 16px; padding: 14px 18px; }
+  .help summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .help code { background: var(--them); padding: 1px 6px; border-radius: 6px; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -164,6 +167,13 @@
     <input type="text" id="pinIn" class="pin-in" inputmode="numeric" maxlength="5" autocomplete="one-time-code" placeholder="•••••">
     <div class="msg" id="joinMsg"></div>
   </section>
+
+  <details class="help card" id="help">
+    <summary>Stuck on “Connecting…”? (VPN on, same Wi-Fi)</summary>
+    <p class="sub" style="margin:10px 0 8px">A VPN hides this device's Wi-Fi address from the browser, so the other device can't find it. Enter it here on the device with the VPN, then start or join again.</p>
+    <input type="text" id="lanIp" inputmode="decimal" placeholder="e.g. 192.168.1.7" autocomplete="off">
+    <p class="hint" style="text-align:left">Mac: run <code>ipconfig getifaddr en0</code> in Terminal. Windows: run <code>ipconfig</code> and use the Wi-Fi “IPv4 Address”.</p>
+  </details>
 
   <!-- Room -->
   <section id="chat" hidden>
@@ -221,6 +231,7 @@ $('rename').onclick = () => {
 const show = id => {
   ['home', 'hostView', 'joinView', 'chat'].forEach(s => $(s).hidden = s !== id);
   $('wrap').classList.toggle('wide', id === 'chat');
+  $('help').hidden = id === 'chat';
 };
 $('inviteToggle').onclick = () => {
   const open = $('invite').classList.toggle('open');
@@ -245,6 +256,22 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 // Room code maps to a host peer id; prefix keeps us clear of other apps on the shared broker.
 const ID_PREFIX = 'hopdrop-v1-';
 // STUN lets devices on different networks find each other. ponytail: no TURN, strict NATs can't connect
+// A VPN hides the Wi-Fi address from WebRTC, so a LAN peer gets no reachable candidate.
+// If the user types this device's Wi-Fi IP, rewrite our host candidates to it as PeerJS
+// serializes them for the broker (same trick the serve.sh LAN version uses).
+const ipRe = /^\d{1,3}(\.\d{1,3}){3}$/;
+const lanIp = () => ipRe.test($('lanIp').value.trim()) ? $('lanIp').value.trim() : '';
+try { $('lanIp').value = localStorage.lanIp || ''; } catch {}
+$('lanIp').oninput = () => { try { localStorage.lanIp = lanIp(); } catch {} };
+if ($('lanIp').value) $('help').open = true;
+const candidateToJSON = RTCIceCandidate.prototype.toJSON;
+RTCIceCandidate.prototype.toJSON = function () {
+  const j = candidateToJSON.call(this);
+  const ip = lanIp(), t = j.candidate?.split(' ');
+  if (ip && t?.[7] === 'host' && t[2].toLowerCase() === 'udp') { t[4] = ip; j.candidate = t.join(' '); }
+  return j;
+};
+
 const peerOpts = { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } };
 let peer;
 
@@ -314,7 +341,7 @@ function join(code) {
     conn.on('open', () => attach('host', conn.dataChannel, 'Host'));
     $('joinMsg').textContent = 'Connecting…';
     // ponytail: 15s timeout; covers NATs that STUN can't punch through
-    setTimeout(() => { if (!peers.size) fail('joinMsg', "Couldn't connect. Try both devices on the same Wi-Fi."); }, 15000);
+    setTimeout(() => { if (!peers.size) { fail('joinMsg', "Couldn't connect. If a device uses a VPN, open the help below on it, then try again."); $('help').open = true; } }, 15000);
   });
   peer.on('error', e => {
     $('pinIn').disabled = false; $('pinIn').select();
