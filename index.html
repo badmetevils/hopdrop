@@ -96,8 +96,14 @@
   .bubble { padding: 10px 14px; border-radius: 18px; white-space: pre-wrap; word-break: break-word; position: relative; }
   .me .bubble { background: var(--grad); color: #fff; border-bottom-right-radius: 6px; box-shadow: 0 4px 14px rgba(99,102,241,.25); }
   .them .bubble { background: var(--them); border-bottom-left-radius: 6px; }
-  .bubble .copy { position: absolute; top: 6px; right: -30px; opacity: 0; background: none; border: 0; cursor: pointer; font-size: 14px; color: var(--muted); transition: opacity .15s; }
-  .them:hover .copy { opacity: 1; }
+  .bubble a.link { color: inherit; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+  .acts { display: flex; gap: 12px; margin: 3px 6px 0; }
+  .me .acts { justify-content: flex-end; }
+  .acts button { background: none; border: 0; padding: 2px 0; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .acts button:hover { color: var(--accent); }
+  .invite-acts { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+  .chip { border: 1px solid var(--line); background: var(--solid); color: var(--text); border-radius: 99px; padding: 6px 14px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
   .from { font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 0 3px 4px; }
   .sys { align-self: center; font-size: 12px; color: var(--muted); padding: 4px 12px; border-radius: 99px; background: var(--them); }
   .file { display: flex; gap: 12px; align-items: center; min-width: 230px; }
@@ -185,6 +191,10 @@
         <div class="qrbox">
           <div class="qr" id="roomQr"></div>
           <div class="invite-link" id="roomLink"></div>
+          <div class="invite-acts">
+            <button class="chip" id="copyInvite">Copy link</button>
+            <button class="chip" id="shareInvite" hidden>Share</button>
+          </div>
         </div>
       </div>
       <div class="card members">
@@ -286,6 +296,7 @@ function renderInvite() {
   $('hostQr').innerHTML = $('roomQr').innerHTML = svg;
   $('hostQr').hidden = false;
   $('hostLink').textContent = $('roomLink').textContent = link.replace(/^https?:\/\//, '');
+  inviteLink = link;
 }
 
 function updateRoom() {
@@ -426,6 +437,57 @@ function handle(data) {
   }
 }
 
+// ---- Links, copy & share ----
+let inviteLink = '';
+// Turns http(s):// and www. addresses in a note into clickable links (text stays text, no HTML).
+function linkify(text) {
+  const frag = document.createDocumentFragment();
+  for (const part of text.split(/((?:https?:\/\/|www\.)[^\s<>"]+[^\s<>".,;:!?)\]'])/i)) {
+    if (/^(https?:\/\/|www\.)/i.test(part)) {
+      const a = document.createElement('a');
+      a.className = 'link'; a.href = /^www\./i.test(part) ? 'https://' + part : part;
+      a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = part;
+      frag.append(a);
+    } else if (part) frag.append(part);
+  }
+  return frag;
+}
+
+// navigator.clipboard only exists on https/localhost pages; a phone on http://<lan-ip> needs the old way.
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  const t = document.createElement('textarea');
+  t.value = text; t.style.cssText = 'position:fixed;opacity:0';
+  document.body.append(t); t.select();
+  let ok = false; try { ok = document.execCommand('copy'); } catch {}
+  t.remove();
+  return ok;
+}
+const canShare = !!navigator.share;
+const shareText = (text, url) => navigator.share(url ? { text, url } : { text }).catch(() => {});
+function flash(btn, msg) { const old = btn.textContent; btn.textContent = msg; setTimeout(() => btn.textContent = old, 1400); }
+
+// Copy / Share row under a bubble.
+function actions(bubbleEl, text, url) {
+  const row = document.createElement('div');
+  row.className = 'acts';
+  const copy = document.createElement('button');
+  copy.textContent = url ? 'Copy link' : 'Copy';
+  copy.onclick = async () => flash(copy, await copyText(url || text) ? 'Copied ✓' : 'Copy failed');
+  row.append(copy);
+  if (canShare) {
+    const sh = document.createElement('button');
+    sh.textContent = 'Share';
+    sh.onclick = () => shareText(text, url);
+    row.append(sh);
+  }
+  bubbleEl.after(row);
+}
+
+$('copyInvite').onclick = async () => flash($('copyInvite'), await copyText(inviteLink) ? 'Copied ✓' : 'Copy failed');
+$('shareInvite').hidden = !canShare;
+$('shareInvite').onclick = () => shareText('Join my room, code ' + pin, inviteLink);
+
 // ---- UI ----
 function bubble(who, from) {
   $('empty')?.remove();
@@ -455,13 +517,8 @@ function sysLine(text) {
 
 function noteBubble(text, who, from) {
   const d = bubble(who, from);
-  d.append(text);
-  if (who === 'them') {
-    const b = document.createElement('button');
-    b.className = 'copy'; b.textContent = '⧉'; b.title = 'Copy';
-    b.onclick = () => navigator.clipboard.writeText(text);
-    d.append(b);
-  }
+  d.append(linkify(text));
+  actions(d, text);
 }
 
 function fileBubble(f, who, from) {
