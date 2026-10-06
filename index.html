@@ -1,0 +1,499 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HopDrop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f5fb; --card: rgba(255,255,255,.85); --solid: #fff; --text: #111827; --muted: #6b7280; --line: rgba(17,24,39,.08);
+    --accent: #6366f1; --accent2: #ec4899; --accent-text: #fff; --them: #f1f2f8; --ok: #10b981; --err: #ef4444;
+    --shadow: 0 1px 2px rgba(17,24,39,.04), 0 8px 24px rgba(17,24,39,.06);
+    --grad: linear-gradient(135deg, var(--accent), var(--accent2));
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #0b0d14; --card: rgba(23,26,36,.85); --solid: #171a24; --text: #eef0f6; --muted: #8b93a7;
+      --line: rgba(255,255,255,.08); --accent: #818cf8; --accent2: #f472b6; --accent-text: #fff; --them: #222636;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.3); }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--text); font: 15px/1.5 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased;
+    background-color: var(--bg); background-attachment: fixed;
+    background-image: radial-gradient(900px 500px at 10% -10%, rgba(99,102,241,.18), transparent 60%),
+                      radial-gradient(700px 400px at 110% 10%, rgba(236,72,153,.12), transparent 60%); }
+  button { font-family: inherit; }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 20px 16px; height: 100dvh; display: flex; flex-direction: column; }
+  .wrap.wide { max-width: 1040px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; flex: none; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 19px; letter-spacing: -.02em; }
+  .logo { width: 34px; height: 34px; border-radius: 10px; background: var(--grad); display: grid; place-items: center; color: #fff; font-size: 18px; box-shadow: 0 4px 14px rgba(99,102,241,.35); }
+  .pill { overflow: hidden; text-overflow: ellipsis; min-width: 0; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 99px; background: var(--card); border: 1px solid var(--line); color: var(--muted); backdrop-filter: blur(10px); white-space: nowrap; }
+  .pill.on { color: var(--ok); }
+  .pill.on::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-right: 6px; box-shadow: 0 0 0 3px rgba(16,185,129,.2); vertical-align: 1px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 24px; box-shadow: var(--shadow); backdrop-filter: blur(16px); animation: rise .25s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+  h2 { font-size: 18px; margin: 0 0 4px; letter-spacing: -.01em; }
+  p.sub { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+  .hero { text-align: center; margin: 24px 0 28px; }
+  .hero h2 { font-size: 30px; font-weight: 800; letter-spacing: -.03em; line-height: 1.15; margin-bottom: 10px; }
+  .hero h2 span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .choices { display: grid; gap: 12px; }
+  .choice { text-align: left; display: flex; gap: 16px; align-items: center; width: 100%; padding: 18px; border-radius: 20px;
+    border: 1px solid var(--line); background: var(--card); color: inherit; font: inherit; cursor: pointer; box-shadow: var(--shadow);
+    transition: transform .15s, box-shadow .15s, border-color .15s; backdrop-filter: blur(16px); }
+  .choice:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 12px 32px rgba(99,102,241,.18); }
+  .choice .ic { font-size: 24px; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 16px; background: var(--grad); flex: none; }
+  .choice:last-of-type .ic { background: var(--them); }
+  .choice b { display: block; font-size: 16px; }
+  .choice span { color: var(--muted); font-size: 13px; }
+  .choice .arrow { margin-left: auto; color: var(--muted); font-size: 20px; }
+  .back { background: none; border: 0; color: var(--muted); font: inherit; font-size: 14px; cursor: pointer; padding: 0; margin-bottom: 14px; }
+  .back:hover { color: var(--text); }
+  .linkbtn { background: none; border: 0; color: var(--accent); font: inherit; cursor: pointer; padding: 0; font-weight: 600; }
+  .qr { display: grid; place-items: center; background: #fff; border-radius: 18px; padding: 12px; margin: 12px auto; width: fit-content; box-shadow: var(--shadow); }
+  .qr svg { display: block; width: 200px; height: 200px; }
+  input[type=text] { width: 100%; border: 1px solid var(--line); background: var(--solid); color: var(--text); border-radius: 14px; padding: 12px; font: inherit; }
+  input[type=text]:focus { outline: 3px solid rgba(99,102,241,.3); border-color: var(--accent); }
+  .msg { color: var(--muted); font-size: 13px; margin-top: 12px; min-height: 1em; text-align: center; }
+  .msg.err { color: var(--err); }
+  .hint { color: var(--muted); font-size: 12px; text-align: center; margin-top: 10px; }
+  .pin { font: 800 46px/1 Inter, system-ui, sans-serif; letter-spacing: 12px; text-align: center; margin: 18px 0 6px; padding-left: 12px;
+    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .pin.sm { font-size: 30px; letter-spacing: 8px; padding-left: 8px; margin: 6px 0 2px; }
+  .pin-in { font: 800 34px Inter, system-ui, sans-serif !important; letter-spacing: 14px; text-align: center; padding: 16px !important; }
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* room layout */
+  #chat { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 12px; min-height: 0; }
+  @media (min-width: 860px) { #chat { grid-template-columns: 290px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 16px; } }
+  .side { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; }
+  .side .card { padding: 18px; }
+  .side h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 8px; font-weight: 700; }
+  .invite-link { font-size: 12px; color: var(--muted); text-align: center; word-break: break-all; }
+  .invite-toggle { display: none; }
+  @media (max-width: 859px) {
+    .side { flex-direction: row; overflow: visible; }
+    .side .members { display: none; }
+    .side .invite { flex: 1; min-width: 0; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+    .side .invite h3 { display: block; margin: 0; }
+    .side .invite .pin.sm { font-size: 22px; letter-spacing: 6px; margin: 0; padding-left: 0; }
+    .side .invite .qrbox { display: none; width: 100%; }
+    .side .invite.open .qrbox { display: block; }
+    .invite-toggle { display: inline-block; margin-left: auto; }
+  }
+  .member { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 14px; font-weight: 500; }
+  .member small { color: var(--muted); font-weight: 400; margin-left: auto; }
+  .av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700; flex: none; }
+  .main { display: flex; flex-direction: column; min-height: 0; padding: 0; overflow: hidden; }
+  #log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 20px; min-height: 200px; }
+  .empty { margin: auto; text-align: center; color: var(--muted); font-size: 14px; }
+  .empty b { display: block; font-size: 22px; margin-bottom: 4px; color: var(--text); }
+  .line { display: flex; gap: 8px; align-items: flex-end; max-width: 82%; animation: rise .2s ease; }
+  .line.me { align-self: flex-end; flex-direction: row-reverse; }
+  .bubble { padding: 10px 14px; border-radius: 18px; white-space: pre-wrap; word-break: break-word; position: relative; }
+  .me .bubble { background: var(--grad); color: #fff; border-bottom-right-radius: 6px; box-shadow: 0 4px 14px rgba(99,102,241,.25); }
+  .them .bubble { background: var(--them); border-bottom-left-radius: 6px; }
+  .bubble .copy { position: absolute; top: 6px; right: -30px; opacity: 0; background: none; border: 0; cursor: pointer; font-size: 14px; color: var(--muted); transition: opacity .15s; }
+  .them:hover .copy { opacity: 1; }
+  .from { font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 0 3px 4px; }
+  .sys { align-self: center; font-size: 12px; color: var(--muted); padding: 4px 12px; border-radius: 99px; background: var(--them); }
+  .file { display: flex; gap: 12px; align-items: center; min-width: 230px; }
+  .file .fi { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; background: rgba(255,255,255,.2); flex: none; }
+  .them .file .fi { background: var(--solid); }
+  .file .meta { flex: 1; min-width: 0; }
+  .file .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file .size { font-size: 12px; opacity: .8; }
+  .file a { color: inherit; font-weight: 700; text-decoration: none; }
+  .file a:hover { text-decoration: underline; }
+  .bar { height: 4px; border-radius: 4px; background: rgba(127,127,127,.25); margin-top: 6px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: currentColor; transition: width .1s; }
+  .bubble img { max-width: 100%; max-height: 320px; border-radius: 12px; margin-top: 8px; display: block; }
+  .composer { display: flex; gap: 8px; align-items: flex-end; border-top: 1px solid var(--line); padding: 12px; }
+  .composer textarea { flex: 1; border: 1px solid var(--line); background: var(--solid); color: var(--text); border-radius: 14px; resize: none; font: inherit; max-height: 140px; padding: 10px 14px; }
+  .composer textarea:focus { outline: 3px solid rgba(99,102,241,.25); border-color: var(--accent); }
+  .icon-btn { width: 44px; height: 44px; flex: none; border-radius: 14px; border: 1px solid var(--line); cursor: pointer; font-size: 18px; background: var(--solid); color: var(--text); transition: transform .1s; }
+  .icon-btn:active { transform: scale(.94); }
+  .icon-btn.send { background: var(--grad); color: #fff; border: 0; box-shadow: 0 4px 14px rgba(99,102,241,.35); }
+  .icon-btn:disabled { opacity: .4; cursor: default; }
+  .composer-hint { font-size: 11px; color: var(--muted); text-align: center; padding: 0 0 8px; }
+  .drop { position: fixed; inset: 12px; border-radius: 24px; background: rgba(99,102,241,.12); backdrop-filter: blur(4px); border: 3px dashed var(--accent);
+    display: grid; place-items: center; font-size: 22px; font-weight: 700; color: var(--accent); pointer-events: none; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+  <header>
+    <div class="brand"><div class="logo">⇄</div>HopDrop</div>
+    <span class="pill" id="pill">Not connected</span>
+  </header>
+
+  <!-- Step 0: choose role -->
+  <section id="home">
+    <div class="hero">
+      <h2>Share files &amp; notes<br><span>between any devices</span></h2>
+      <p class="sub">Device to device. No uploads, no accounts, no install.</p>
+    </div>
+    <div class="choices">
+      <button class="choice" id="host"><div class="ic">✨</div><div><b>Start a room</b><span>Get a code others can join</span></div><div class="arrow">›</div></button>
+      <button class="choice" id="goJoin"><div class="ic">🔢</div><div><b>Join a room</b><span>Enter the 5-digit code</span></div><div class="arrow">›</div></button>
+    </div>
+    <p class="hint" style="margin-top:20px">You appear as <b id="myName"></b> · <button class="linkbtn" id="rename">change</button></p>
+  </section>
+
+  <!-- Host: show 5-digit code, wait for first join -->
+  <section id="hostView" class="card" hidden style="text-align:center">
+    <div style="text-align:left"><button class="back" data-back>← Back</button></div>
+    <h2>Your room is ready</h2>
+    <p class="sub" style="margin:0">Others enter this code, or scan the QR</p>
+    <div class="pin" id="pin">·····</div>
+    <div class="qr" id="hostQr" hidden></div>
+    <div class="invite-link" id="hostLink"></div>
+    <p class="hint"><span class="spinner"></span>Waiting for someone to join…</p>
+    <div class="msg" id="hostMsg"></div>
+  </section>
+
+  <!-- Join: type 5-digit code -->
+  <section id="joinView" class="card" hidden>
+    <button class="back" data-back>← Back</button>
+    <h2>Join a room</h2>
+    <p class="sub">Enter the code shown on the device that started the room.</p>
+    <input type="text" id="pinIn" class="pin-in" inputmode="numeric" maxlength="5" autocomplete="one-time-code" placeholder="•••••">
+    <div class="msg" id="joinMsg"></div>
+  </section>
+
+  <!-- Room -->
+  <section id="chat" hidden>
+    <aside class="side">
+      <div class="card invite" id="invite">
+        <h3>Invite</h3>
+        <div class="pin sm" id="roomPin"></div>
+        <button class="linkbtn invite-toggle" id="inviteToggle">Show QR</button>
+        <div class="qrbox">
+          <div class="qr" id="roomQr"></div>
+          <div class="invite-link" id="roomLink"></div>
+        </div>
+      </div>
+      <div class="card members">
+        <h3>In the room</h3>
+        <div id="members"></div>
+      </div>
+    </aside>
+    <div class="card main">
+      <div id="log"><div class="empty" id="empty"><b>🎉 You're in</b>Send a note or drop files anywhere.</div></div>
+      <div class="composer">
+        <button class="icon-btn" id="attach" title="Attach files">📎</button>
+        <input type="file" id="file" multiple hidden>
+        <textarea id="note" rows="1" placeholder="Write a note…"></textarea>
+        <button class="icon-btn send" id="sendNote" title="Send">➤</button>
+      </div>
+      <div class="composer-hint">Enter to send · Shift+Enter for new line · drop files anywhere</div>
+    </div>
+  </section>
+</div>
+<div class="drop" id="drop" hidden>Drop to share with the room</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+// Star topology: host holds one connection per guest and relays everything it receives to the others.
+// ponytail: host carries all traffic and the room ends when host leaves; mesh if rooms get big
+let isHost = false, pin = '', members = [];
+const peers = new Map(); // peer id -> { ch, name }
+const incoming = new Map(); // file id -> receive state
+
+let myName;
+try { myName = localStorage.myName; } catch {}
+myName ||= (navigator.userAgent.match(/iPhone|iPad|Android|Mac|Windows|Linux/)?.[0] || 'Device') + ' ' + Math.floor(Math.random() * 90 + 10);
+$('myName').textContent = myName;
+$('rename').onclick = () => {
+  const n = prompt('Your name in the room', myName)?.trim();
+  if (!n) return;
+  myName = n.slice(0, 30); $('myName').textContent = myName;
+  try { localStorage.myName = myName; } catch {}
+};
+
+const show = id => {
+  ['home', 'hostView', 'joinView', 'chat'].forEach(s => $(s).hidden = s !== id);
+  $('wrap').classList.toggle('wide', id === 'chat');
+};
+$('inviteToggle').onclick = () => {
+  const open = $('invite').classList.toggle('open');
+  $('inviteToggle').textContent = open ? 'Hide QR' : 'Show QR';
+};
+
+// Stable color per name for avatars.
+const hue = name => [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+function avatar(name) {
+  const d = document.createElement('div');
+  d.className = 'av';
+  d.style.background = `linear-gradient(135deg, hsl(${hue(name)} 70% 55%), hsl(${(hue(name) + 40) % 360} 70% 50%))`;
+  d.textContent = name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  return d;
+}
+const fail = (box, e) => { $(box).textContent = 'Error: ' + (e.message || e); $(box).classList.add('err'); };
+const fmtSize = n => n < 1024 ? n + ' B' : n < 1 << 20 ? (n / 1024).toFixed(1) + ' KB' : (n / (1 << 20)).toFixed(1) + ' MB';
+const rid = () => Math.random().toString(36).slice(2, 10);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+// PeerJS's free public broker (0.peerjs.com) introduces devices; data still flows device to device.
+// Room code maps to a host peer id; prefix keeps us clear of other apps on the shared broker.
+const ID_PREFIX = 'hopdrop-v1-';
+// STUN lets devices on different networks find each other. ponytail: no TURN, strict NATs can't connect
+const peerOpts = { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } };
+let peer;
+
+document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => location.replace(location.pathname));
+
+// Invite QR/code stays visible in the room so more people can join any time.
+function renderInvite() {
+  const link = location.origin + location.pathname + '?code=' + pin;
+  const q = qrcode(0, 'M'); q.addData(link); q.make();
+  const svg = q.createSvgTag({ cellSize: 4, margin: 2 });
+  $('pin').textContent = $('roomPin').textContent = pin;
+  $('hostQr').innerHTML = $('roomQr').innerHTML = svg;
+  $('hostQr').hidden = false;
+  $('hostLink').textContent = $('roomLink').textContent = link.replace(/^https?:\/\//, '');
+}
+
+function updateRoom() {
+  const open = [...peers.values()].some(p => p.ch.readyState === 'open');
+  const n = members.length;
+  $('pill').textContent = open ? `Room ${pin} · ${n} ${n === 1 ? 'person' : 'people'}` : (pin ? `Room ${pin}` : 'Not connected');
+  $('pill').classList.toggle('on', open);
+  $('members').replaceChildren(...members.map(name => {
+    const row = document.createElement('div');
+    row.className = 'member';
+    row.append(avatar(name), name);
+    if (name === myName) { const t = document.createElement('small'); t.textContent = 'you'; row.append(t); }
+    return row;
+  }));
+}
+// Host is the source of truth for who is in the room.
+const hostMembers = () => [myName, ...[...peers.values()].filter(p => p.ch.readyState === 'open').map(p => p.name)];
+
+const newPin = () => String(Math.floor(Math.random() * 1e5)).padStart(5, '0');
+
+// ---- Host ----
+$('host').onclick = () => {
+  isHost = true;
+  show('hostView');
+  const tryPin = () => {
+    pin = newPin();
+    peer = new Peer(ID_PREFIX + pin, peerOpts);
+    peer.on('open', () => { members = [myName]; renderInvite(); updateRoom(); });
+    peer.on('connection', conn => conn.on('open', () => attach(conn.peer, conn.dataChannel, conn.metadata?.name || 'Guest')));
+    peer.on('error', e => {
+      if (e.type === 'unavailable-id') { peer.destroy(); tryPin(); }   // code taken by another room, pick again
+      else fail('hostMsg', e);
+    });
+    // Broker link drops on sleep/network change; reconnect so new people can still join.
+    peer.on('disconnected', () => !peer.destroyed && setTimeout(() => peer.reconnect(), 1000));
+  };
+  tryPin();
+};
+
+// ---- Guest ----
+$('goJoin').onclick = () => { show('joinView'); $('pinIn').focus(); };
+
+function join(code) {
+  show('joinView');
+  $('pinIn').value = code; $('pinIn').disabled = true;
+  $('joinMsg').classList.remove('err'); $('joinMsg').textContent = 'Joining…';
+  peer?.destroy();
+  peer = new Peer(peerOpts);
+  peer.on('open', () => {
+    pin = code;
+    renderInvite();
+    const conn = peer.connect(ID_PREFIX + code, { reliable: true, metadata: { name: myName } });
+    conn.on('open', () => attach('host', conn.dataChannel, 'Host'));
+    $('joinMsg').textContent = 'Connecting…';
+    // ponytail: 15s timeout; covers NATs that STUN can't punch through
+    setTimeout(() => { if (!peers.size) fail('joinMsg', "Couldn't connect. Try both devices on the same Wi-Fi."); }, 15000);
+  });
+  peer.on('error', e => {
+    $('pinIn').disabled = false; $('pinIn').select();
+    fail('joinMsg', e.type === 'peer-unavailable' ? `No room with code ${code}. Check the code.` : e);
+  });
+}
+$('pinIn').oninput = () => {
+  $('pinIn').value = $('pinIn').value.replace(/\D/g, '');
+  if ($('pinIn').value.length === 5) join($('pinIn').value);
+};
+
+const linkPin = new URLSearchParams(location.search).get('code');
+if (linkPin) { history.replaceState(null, '', location.pathname); join(linkPin); }
+
+// ---- Channels ----
+function attach(id, ch, name) {
+  ch.binaryType = 'arraybuffer';
+  ch.bufferedAmountLowThreshold = 1 << 20;
+  peers.set(id, { ch, name });
+  const onOpen = () => {
+    show('chat');
+    $('note').focus();
+    if (isHost) {
+      members = hostMembers();
+      sysLine(`${name} joined`);
+      sendAll(JSON.stringify({ sys: `${name} joined`, members }), id);
+      ch.send(JSON.stringify({ sys: `You joined ${myName}'s room`, members }));
+    }
+    updateRoom();
+  };
+  ch.onopen = onOpen;
+  if (ch.readyState === 'open') onOpen();
+  ch.onclose = () => {
+    peers.delete(id);
+    if (isHost) {
+      members = hostMembers();
+      sysLine(`${name} left`);
+      sendAll(JSON.stringify({ sys: `${name} left`, members }));
+    } else {
+      sysLine('Host left. Room closed.');
+      $('note').disabled = $('sendNote').disabled = $('attach').disabled = true;
+    }
+    updateRoom();
+  };
+  ch.onmessage = e => {
+    // ponytail: relay ignores per-guest backpressure; slow guest on a huge file may buffer in host memory
+    if (isHost) sendAll(e.data, id);
+    handle(e.data);
+  };
+}
+
+function sendAll(data, exceptId) {
+  for (const [id, p] of peers) if (id !== exceptId && p.ch.readyState === 'open') p.ch.send(data);
+}
+
+// Binary chunks start with a 4-byte file id so files from different people can interleave.
+function handle(data) {
+  if (typeof data !== 'string') {
+    const f = incoming.get(new DataView(data).getUint32(0));
+    if (!f) return;
+    f.parts.push(data.slice(4));
+    f.got += data.byteLength - 4;
+    f.bar.style.width = (f.got / f.size * 100) + '%';
+    return;
+  }
+  const m = JSON.parse(data);
+  if (m.members) { members = m.members; updateRoom(); }
+  if (m.sys) sysLine(m.sys);
+  else if (m.note != null) noteBubble(m.note, 'them', m.from);
+  else if (m.file) incoming.set(m.file.id, { ...m.file, parts: [], got: 0, ...fileBubble(m.file, 'them', m.from) });
+  else if (m.done != null) {
+    const f = incoming.get(m.done);
+    if (!f) return;
+    incoming.delete(m.done);
+    const url = URL.createObjectURL(new Blob(f.parts, { type: f.type }));
+    f.status.innerHTML = '';
+    const a = document.createElement('a');
+    a.href = url; a.download = f.name; a.textContent = '⬇ Download';
+    f.status.append(a);
+    f.bar.parentNode.remove();
+    if (f.type.startsWith('image/')) { const img = new Image(); img.src = url; f.el.append(img); }
+  }
+}
+
+// ---- UI ----
+function bubble(who, from) {
+  $('empty')?.remove();
+  const line = document.createElement('div');
+  line.className = 'line ' + who;
+  const col = document.createElement('div');
+  if (from) {
+    line.append(avatar(from));
+    const f = document.createElement('div'); f.className = 'from'; f.textContent = from; col.append(f);
+  }
+  const d = document.createElement('div');
+  d.className = 'bubble';
+  col.append(d);
+  line.append(col);
+  $('log').append(line);
+  $('log').scrollTop = $('log').scrollHeight;
+  return d;
+}
+
+function sysLine(text) {
+  $('empty')?.remove();
+  const d = document.createElement('div');
+  d.className = 'sys'; d.textContent = text;
+  $('log').append(d);
+  $('log').scrollTop = $('log').scrollHeight;
+}
+
+function noteBubble(text, who, from) {
+  const d = bubble(who, from);
+  d.append(text);
+  if (who === 'them') {
+    const b = document.createElement('button');
+    b.className = 'copy'; b.textContent = '⧉'; b.title = 'Copy';
+    b.onclick = () => navigator.clipboard.writeText(text);
+    d.append(b);
+  }
+}
+
+function fileBubble(f, who, from) {
+  const el = bubble(who, from);
+  el.insertAdjacentHTML('beforeend', '<div class="file"><div class="fi">📄</div><div class="meta"><div class="name"></div><div class="size"></div><div class="bar"><i></i></div></div></div>');
+  el.querySelector('.name').textContent = f.name;
+  el.querySelector('.size').textContent = fmtSize(f.size) + ' · ';
+  const status = document.createElement('span');
+  status.textContent = who === 'me' ? 'Sending…' : 'Receiving…';
+  el.querySelector('.size').append(status);
+  return { el, bar: el.querySelector('.bar i'), status };
+}
+
+const anyOpen = () => [...peers.values()].some(p => p.ch.readyState === 'open');
+
+function sendNote() {
+  const note = $('note').value.trim();
+  if (!note || !anyOpen()) return;
+  sendAll(JSON.stringify({ note, from: myName }));
+  noteBubble(note, 'me');
+  $('note').value = '';
+  autosize();
+}
+$('sendNote').onclick = sendNote;
+$('note').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendNote(); } };
+const autosize = () => { $('note').style.height = 'auto'; $('note').style.height = $('note').scrollHeight + 'px'; };
+$('note').oninput = autosize;
+
+$('attach').onclick = () => $('file').click();
+$('file').onchange = () => { sendFiles($('file').files); $('file').value = ''; };
+
+// Drag & drop anywhere once connected
+let dragDepth = 0;
+addEventListener('dragenter', () => { if (anyOpen()) { dragDepth++; $('drop').hidden = false; } });
+addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; $('drop').hidden = true; } });
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; $('drop').hidden = true; if (anyOpen()) sendFiles(e.dataTransfer.files); });
+
+let queue = Promise.resolve();
+const sendFiles = files => { for (const f of [...files]) queue = queue.then(() => sendFile(f)); };
+
+async function sendFile(f) {
+  const fid = crypto.getRandomValues(new Uint32Array(1))[0];
+  const { bar, status } = fileBubble({ name: f.name, size: f.size }, 'me');
+  sendAll(JSON.stringify({ file: { id: fid, name: f.name, type: f.type, size: f.size }, from: myName }));
+  const CHUNK = 16384;
+  for (let i = 0; i < f.size; i += CHUNK) {
+    for (const p of peers.values())
+      if (p.ch.readyState === 'open' && p.ch.bufferedAmount > 8 << 20) await new Promise(r => p.ch.onbufferedamountlow = r);
+    const buf = new Uint8Array(4 + Math.min(CHUNK, f.size - i));
+    new DataView(buf.buffer).setUint32(0, fid);
+    buf.set(new Uint8Array(await f.slice(i, i + CHUNK).arrayBuffer()), 4);
+    sendAll(buf.buffer);
+    bar.style.width = Math.min(100, (i + CHUNK) / f.size * 100) + '%';
+  }
+  sendAll(JSON.stringify({ done: fid }));
+  status.textContent = 'Sent ✓';
+  bar.parentNode.remove();
+}
+</script>
+</body>
+</html>
